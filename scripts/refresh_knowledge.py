@@ -16,9 +16,16 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCES_PATH = ROOT / "data" / "sources.json"
 CACHE_PATH = ROOT / "data" / "knowledge_cache.json"
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; HRAssistantBot/1.0; +https://github.com/)"}
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-CA,en;q=0.9",
+}
 MAX_CHARS_PER_PAGE = 12_000
-TIMEOUT_SECONDS = 20
+TIMEOUT_SECONDS = 30
+RETRY_COUNT = 2
 
 
 def extract_text(html: str) -> str:
@@ -32,13 +39,16 @@ def extract_text(html: str) -> str:
 
 def fetch_source(entry: dict) -> dict:
     url = entry["url"]
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SECONDS)
-        resp.raise_for_status()
-        text = extract_text(resp.text)
-        status = "ok" if text else "empty"
-    except requests.RequestException as exc:
-        text, status = "", f"error: {exc}"
+    text, status = "", "error: unknown"
+    for attempt in range(RETRY_COUNT):
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SECONDS)
+            resp.raise_for_status()
+            text = extract_text(resp.text)
+            status = "ok" if text else "empty"
+            break
+        except requests.RequestException as exc:
+            text, status = "", f"error: {exc}"
 
     return {
         **entry,

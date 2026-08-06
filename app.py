@@ -2,9 +2,10 @@ import os
 from datetime import date, datetime, timezone
 
 import anthropic
+import pandas as pd
 import streamlit as st
 
-from backend import document_extract, knowledge, query_log, severance_rules
+from backend import document_extract, knowledge, policy_extractor, query_log, reorg_planner, severance_rules
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -402,6 +403,132 @@ def render_calculator_tab() -> None:
         )
 
 
+def render_reorg_tab() -> None:
+    st.subheader("1. Upload employee list")
+    st.caption(
+        "Upload an Excel file of the employees in scope for a reorg. Need the format? "
+        "Download the template below."
+    )
+    st.download_button(
+        "Download template (.xlsx)",
+        data=reorg_planner.build_template_bytes(),
+        file_name="reorg_scenario_template.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+    uploaded = st.file_uploader("Employee list", type=["xlsx"], key="reorg_upload")
+    if uploaded is None:
+        return
+
+    try:
+        employees_df = reorg_planner.load_employees(uploaded)
+    except reorg_planner.TemplateError as e:
+        st.error(str(e))
+        return
+    except Exception as e:
+        st.error(f"Couldn't read that file: {e}")
+        return
+
+    st.success(f"Loaded {len(employees_df)} employees ({employees_df['included'].sum()} in scope).")
+
+    st.subheader("2. Scenario assumptions")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        as_of = st.date_input("Effective / as-of date", value=date.today())
+    with c2:
+        payroll_million = st.number_input(
+            "Ontario payroll ($ millions, if applicable)", min_value=0.0, value=2.5, step=0.5,
+            help="Only affects Ontario employees' statutory severance-pay eligibility (needs ≥ $2.5M).",
+        )
+    with c3:
+        st.caption("High-scenario common-law rule of thumb (adjustable):")
+    c4, c5 = st.columns(2)
+    with c4:
+        months_per_year = st.slider("Months of notice per year of service", 0.5, 2.0, 1.0, 0.1)
+    with c5:
+        cap_months = st.slider("Cap (months)", 6, 30, 24, 1)
+
+    st.caption(
+        "**Low** = statutory minimum only. **High** = greater of statutory minimum or the common-law "
+        "rule-of-thumb above. **Moderate** = midpoint between the two. These are planning estimates, "
+        "not legal advice — actual common-law exposure depends on case-specific factors."
+    )
+
+    st.subheader("3. Optional: custom company policy")
+    st.caption(
+        "Paste or upload your severance policy once — it's parsed a single time and applied to every "
+        "employee, so bulk runs stay cheap regardless of headcount."
+    )
+    policy_text = st.text_area("Paste policy text", height=100, key="reorg_policy_text")
+    policy_file = st.file_uploader("...or upload a policy document", type=["txt", "pdf", "docx"], key="reorg_policy_file")
+    combined_policy = policy_text.strip()
+    if policy_file is not None:
+        try:
+            extracted = document_extract.extract_text(policy_file)
+            combined_policy = f"{combined_policy}\n\n{extracted}".strip()
+        except Exception as e:
+            st.error(f"Couldn't read that file: {e}")
+
+    custom_policy = None
+    if combined_policy and st.button("Parse policy"):
+        client = get_client()
+        with st.spinner("Extracting formula from policy (one-time call)..."):
+            try:
+                params, confident, usage = policy_extractor.extract_policy_formula(client, MODEL, combined_policy)
+            except Exception as e:
+                st.error(f"Couldn't parse policy: {e}")
+                params, confident, usage = None, False, None
+        if params:
+            st.session_state["reorg_custom_policy"] = params if confident else None
+            if confident:
+                st.success(f"Policy formula extracted: {params.summary}")
+            else:
+                st.warning(f"Couldn't extract a confident formula: {params.summary} — custom column will be skipped.")
+            cost = (usage.input_tokens * PRICE_PER_MTOK_INPUT + usage.output_tokens * PRICE_PER_MTOK_OUTPUT) / 1_000_000
+            st.caption(f"~${cost:.4f} for this one-time extraction call.")
+
+    custom_policy = st.session_state.get("reorg_custom_policy")
+
+    st.subheader("4. Results")
+    if st.button("Run scenarios", type="primary"):
+        result_df = reorg_planner.compute_scenarios(
+            employees_df, as_of, payroll_million, months_per_year, cap_months, custom_policy
+        )
+        summary_df = reorg_planner.summarize(result_df)
+        st.session_state["reorg_result_df"] = result_df
+        st.session_state["reorg_summary_df"] = summary_df
+
+        query_log.log_query(
+            question=f"[Reorg Planner] {len(employees_df)} employees, as-of {as_of}",
+            jurisdictions=sorted(set(employees_df["jurisdiction"])),
+            used_web_search=False,
+            input_tokens=0,
+            output_tokens=0,
+            num_searches=0,
+            cost_usd=0.0,
+        )
+
+    result_df = st.session_state.get("reorg_result_df")
+    summary_df = st.session_state.get("reorg_summary_df")
+    if result_df is not None:
+        st.markdown("#### Scenario totals (in-scope employees)")
+        st.dataframe(summary_df, use_container_width=True)
+
+        chart_cols = [c for c in ["statutory_cost", "low_cost", "moderate_cost", "high_cost", "custom_cost"] if c in result_df.columns]
+        totals = result_df[result_df["included"]][chart_cols].sum()
+        st.bar_chart(totals)
+
+        st.markdown("#### Employee-level detail")
+        st.dataframe(result_df, use_container_width=True)
+
+        st.download_button(
+            "Download results (.xlsx)",
+            data=reorg_planner.build_output_excel(result_df, summary_df),
+            file_name="reorg_scenario_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+
 def main() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     st.title("🍁 Canada HR Employment Standards Assistant")
@@ -413,11 +540,15 @@ def main() -> None:
     render_sidebar()
     freshness_banner()
 
-    qa_tab, calc_tab = st.tabs(["💬 Ask a Question", "🧮 Severance Calculator"])
+    qa_tab, calc_tab, reorg_tab = st.tabs(
+        ["💬 Ask a Question", "🧮 Severance Calculator", "🏗️ Reorg Scenario Planner"]
+    )
     with qa_tab:
         render_qa_tab()
     with calc_tab:
         render_calculator_tab()
+    with reorg_tab:
+        render_reorg_tab()
 
 
 if __name__ == "__main__":

@@ -10,6 +10,12 @@ regulated employers.
 - **Severance Calculator tab** — computes the statutory minimum notice/severance for a given
   jurisdiction and years of service, then optionally reconciles it against an uploaded/pasted
   company policy (the employee is always entitled to whichever is greater).
+- **Reorg Scenario Planner tab** — upload an Excel list of employees in scope for a reorg and get
+  Low/Moderate/High severance cost scenarios (Low = statutory minimum, High = greater of statutory
+  or a common-law rule-of-thumb, Moderate = midpoint), plus an optional custom-policy column. The
+  company policy is parsed by the LLM **once** per run (not once per employee) and applied
+  deterministically, so bulk runs stay cheap regardless of headcount. Results are downloadable as
+  Excel (summary + employee-level detail).
 - Every query is logged locally (`data/query_log.sqlite3`) for cost and usage-pattern visibility
   (sidebar shows total queries, cache hit rate, most-asked jurisdictions).
 
@@ -56,8 +62,11 @@ the workflow logs / script output periodically and fix stale URLs there.
 
 ## Known limitations
 
-- The severance calculator's built-in statutory formulas cover Ontario, British Columbia, Alberta,
-  Quebec, and federally regulated employers only; other provinces/territories should use the Q&A tab.
+- The severance calculator and reorg planner's built-in statutory formulas cover Ontario, British
+  Columbia, Alberta, Quebec, and federally regulated employers only; other provinces/territories
+  should use the Q&A tab.
+- The reorg planner's Low/Moderate/High scenarios are planning estimates using a simplified
+  common-law rule of thumb, not a substitute for legal/actuarial review of an actual reorg.
 - The query log is a local SQLite file — on Streamlit Community Cloud the filesystem is ephemeral
   and resets on redeploy (including the nightly refresh commit), so usage analytics reset
   periodically rather than accumulating forever.
