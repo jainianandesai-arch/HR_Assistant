@@ -16,7 +16,7 @@ import pandas as pd
 from . import severance_rules
 
 REQUIRED_COLUMNS = ["employee_id", "jurisdiction", "hire_date", "weekly_pay"]
-OPTIONAL_COLUMNS = ["name", "department", "included", "unionized"]
+OPTIONAL_COLUMNS = ["name", "department", "included", "unionized", "fixed_term", "excluded_industry"]
 
 COLUMN_ALIASES = {
     "employee_id": ["employee_id", "employee id", "id", "emp id", "emp_id"],
@@ -27,6 +27,8 @@ COLUMN_ALIASES = {
     "department": ["department", "dept", "team"],
     "included": ["included", "in scope", "in_scope", "impacted"],
     "unionized": ["unionized", "unionised", "union", "cba", "collective agreement"],
+    "fixed_term": ["fixed_term", "fixed term", "fixed-term", "contract type"],
+    "excluded_industry": ["excluded_industry", "excluded industry", "industry exclusion", "construction/agriculture"],
 }
 
 
@@ -46,6 +48,8 @@ def build_template_bytes() -> bytes:
                 "weekly_pay": 1800,
                 "included": "Y",
                 "unionized": "N",
+                "fixed_term": "N",
+                "excluded_industry": "N",
             },
             {
                 "employee_id": "E002",
@@ -56,6 +60,8 @@ def build_template_bytes() -> bytes:
                 "weekly_pay": 1450,
                 "included": "Y",
                 "unionized": "N",
+                "fixed_term": "N",
+                "excluded_industry": "N",
             },
         ]
     )
@@ -75,6 +81,8 @@ def build_template_bytes() -> bytes:
                     "Any text label",
                     "Y/N — rows marked N are excluded from cost totals",
                     "Y/N — rows marked Y are flagged; statutory ESA/CBA calculator doesn't apply to unionized roles, defer to the collective agreement",
+                    "Y/N — contract has a defined end date rather than being indefinite",
+                    "Y/N — role/industry (e.g. construction, agriculture) that may be exempt from ESA notice requirements",
                 ],
             }
         )
@@ -110,10 +118,11 @@ def load_employees(uploaded_file) -> pd.DataFrame:
         df["included"] = df["included"].astype(str).str.strip().str.upper().isin(["Y", "YES", "TRUE", "1"])
     else:
         df["included"] = True
-    if "unionized" in df.columns:
-        df["unionized"] = df["unionized"].astype(str).str.strip().str.upper().isin(["Y", "YES", "TRUE", "1"])
-    else:
-        df["unionized"] = False
+    for flag_col in ("unionized", "fixed_term", "excluded_industry"):
+        if flag_col in df.columns:
+            df[flag_col] = df[flag_col].astype(str).str.strip().str.upper().isin(["Y", "YES", "TRUE", "1"])
+        else:
+            df[flag_col] = False
     unsupported = sorted(set(df["jurisdiction"]) - set(severance_rules.SUPPORTED_JURISDICTIONS))
     if unsupported:
         raise TemplateError(
@@ -150,7 +159,10 @@ def compute_scenarios(
     rows = []
     for _, r in df.iterrows():
         years = max((pd.Timestamp(as_of_date) - r["hire_date"]).days / 365.25, 0.0)
-        stat = severance_rules.calculate(r["jurisdiction"], years, payroll_million)
+        stat = severance_rules.calculate(
+            r["jurisdiction"], years, payroll_million,
+            fixed_term=bool(r.get("fixed_term")), excluded_industry=bool(r.get("excluded_industry")),
+        )
         stat_weeks = stat.total_weeks
 
         common_law_weeks = min(
@@ -185,6 +197,8 @@ def compute_scenarios(
             "jurisdiction": r["jurisdiction"],
             "included": r["included"],
             "unionized": r.get("unionized", False),
+            "fixed_term": r.get("fixed_term", False),
+            "excluded_industry": r.get("excluded_industry", False),
             "years_of_service": round(years, 2),
             "weekly_pay": r["weekly_pay"],
             "statutory_weeks": round(stat_weeks, 2),
@@ -238,6 +252,27 @@ def check_unionized(df: pd.DataFrame) -> str | None:
             "collective agreement. Confirm with labour relations before using these numbers."
         )
     return None
+
+
+def check_other_flags(df: pd.DataFrame) -> list[str]:
+    """Fixed-term and industry-exclusion flags — informational, don't alter the calculation."""
+    in_scope = df[df["included"]]
+    flags = []
+    ft_count = int(in_scope["fixed_term"].sum()) if "fixed_term" in in_scope.columns else 0
+    if ft_count:
+        flags.append(
+            f"{ft_count} in-scope employee(s) are flagged as fixed-term contracts. Statutory notice "
+            "typically doesn't apply if the contract completes its scheduled term — verify whether "
+            "this is an early termination before relying on the statutory figures shown."
+        )
+    ind_count = int(in_scope["excluded_industry"].sum()) if "excluded_industry" in in_scope.columns else 0
+    if ind_count:
+        flags.append(
+            f"{ind_count} in-scope employee(s) are flagged for possible industry exclusion (e.g. "
+            "construction, agriculture). Some jurisdictions exempt these roles from statutory notice "
+            "entirely — verify against the applicable ESA regulations before relying on these figures."
+        )
+    return flags
 
 
 def summarize(result_df: pd.DataFrame) -> pd.DataFrame:

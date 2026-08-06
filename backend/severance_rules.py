@@ -263,7 +263,13 @@ CALCULATORS = {
 SUPPORTED_JURISDICTIONS = list(CALCULATORS.keys())
 
 
-def calculate(jurisdiction: str, years_of_service: float, employer_payroll_million: float | None = None) -> LegislativeResult:
+def calculate(
+    jurisdiction: str,
+    years_of_service: float,
+    employer_payroll_million: float | None = None,
+    fixed_term: bool = False,
+    excluded_industry: bool = False,
+) -> LegislativeResult:
     fn = CALCULATORS.get(jurisdiction)
     if not fn:
         return LegislativeResult(
@@ -276,7 +282,25 @@ def calculate(jurisdiction: str, years_of_service: float, employer_payroll_milli
             ],
             supported=False,
         )
-    return fn(years_of_service, monthly_payroll_million=employer_payroll_million)
+    result = fn(years_of_service, monthly_payroll_million=employer_payroll_million)
+
+    if fixed_term:
+        result.notes.append(
+            "⚠ FIXED-TERM CONTRACT: most jurisdictions do NOT require statutory notice if the "
+            "contract completes its full term as scheduled. The figures above assume an "
+            "indefinite-term employee — if this is an early termination of a fixed-term contract, "
+            "the employee may instead be owed wages for the remainder of the term (potentially "
+            "more than these statutory figures). Confirm with legal."
+        )
+    if excluded_industry:
+        result.notes.append(
+            "⚠ POSSIBLE INDUSTRY EXCLUSION: some jurisdictions exempt certain industries/roles "
+            "(e.g. construction, agriculture, seasonal work) from termination notice or severance "
+            "pay requirements entirely. The figures above assume no exclusion applies — verify "
+            "this employee's role/industry against the applicable ESA regulations before relying "
+            "on this number."
+        )
+    return result
 
 
 @dataclass

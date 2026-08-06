@@ -403,7 +403,11 @@ def render_calculator_tab() -> None:
     years_of_service = max((termination_date - hire_date).days / 365.25, 0.0)
     st.metric("Years of service", f"{years_of_service:.2f}")
 
-    result = severance_rules.calculate(jurisdiction, years_of_service, payroll_million)
+    c3, c4 = st.columns(2)
+    fixed_term = c3.checkbox("Fixed-term contract", help="Contract has a defined end date rather than being indefinite.")
+    excluded_industry = c4.checkbox("Possible industry exclusion", help="e.g. construction, agriculture, or another role/industry that may be exempt from ESA notice requirements.")
+
+    result = severance_rules.calculate(jurisdiction, years_of_service, payroll_million, fixed_term, excluded_industry)
 
     st.markdown("#### Statutory minimum result")
     if not result.supported:
@@ -649,6 +653,9 @@ def render_reorg_tab() -> None:
         union_flag = reorg_planner.check_unionized(result_df)
         if union_flag:
             st.warning(f"⚠️ {union_flag}", icon="⚠️")
+
+        for flag in reorg_planner.check_other_flags(result_df):
+            st.warning(f"⚠️ {flag}", icon="⚠️")
 
         st.markdown("#### Scenario totals (in-scope employees)")
         st.dataframe(summary_df, use_container_width=True)
