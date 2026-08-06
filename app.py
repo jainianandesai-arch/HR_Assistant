@@ -111,6 +111,14 @@ section[data-testid="stSidebar"] {
 }
 section[data-testid="stSidebar"] * { color: #f4efe4 !important; }
 section[data-testid="stSidebar"] .stTextInput input { color: #0b1f3a !important; }
+
+@media (max-width: 640px) {
+    .hra-banner { font-size: 0.75rem; padding: 0.5rem 0.75rem; flex-direction: column; align-items: flex-start; }
+    h1 { font-size: 1.4rem !important; }
+    [data-testid="stChatMessage"] { font-size: 0.9rem; }
+    .stTabs [data-baseweb="tab"] { font-size: 0.8rem; padding: 6px 8px; }
+    div[data-testid="column"] { min-width: 100% !important; }
+}
 </style>
 """
 
@@ -263,7 +271,15 @@ def render_qa_tab() -> None:
 
     with st.chat_message("assistant"):
         placeholder = st.empty()
-        placeholder.markdown("Checking cached government sources...")
+        if pages:
+            jur_list = ", ".join(jurisdictions) if jurisdictions else "the most relevant"
+            src_names = ", ".join(p["topic"] for p in pages[:3])
+            placeholder.markdown(
+                f"Cross-referencing {len(pages)} cached government source(s) for {jur_list} "
+                f"jurisdiction(s) — {src_names}..."
+            )
+        else:
+            placeholder.markdown("No matching cached sources — searching live government pages...")
         try:
             response = client.messages.create(
                 model=MODEL,
