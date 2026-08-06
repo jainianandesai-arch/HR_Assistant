@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE_PATH = ROOT / "data" / "knowledge_cache.json"
+CHANGELOG_PATH = ROOT / "data" / "refresh_changelog.json"
 
 PROVINCE_ALIASES = {
     "ontario": "Ontario", "on": "Ontario",
@@ -78,3 +79,13 @@ def format_context(pages: list[dict]) -> str:
 
 def refreshed_at() -> str | None:
     return load_cache().get("refreshed_at")
+
+
+def recent_changes(limit: int = 8) -> list[dict]:
+    if not CHANGELOG_PATH.exists():
+        return []
+    try:
+        entries = json.loads(CHANGELOG_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    return entries[:limit]

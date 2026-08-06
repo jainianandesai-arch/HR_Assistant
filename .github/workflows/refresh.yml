@@ -28,6 +28,6 @@ jobs:
         run: |
           git config user.name "hr-assistant-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/knowledge_cache.json
+          git add data/knowledge_cache.json data/refresh_changelog.json
           git diff --quiet --cached || git commit -m "Nightly refresh of government source cache"
           git push

@@ -1,0 +1,16 @@
+[
+  {"jurisdiction": "Federal", "category": "Record of Employment", "name": "ROE Web (Service Canada)", "url": "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-roe.html"},
+  {"jurisdiction": "Federal", "category": "Human Rights Complaint", "name": "Canadian Human Rights Commission — Make a Complaint", "url": "https://www.chrc-ccdp.gc.ca/make-a-complaint"},
+  {"jurisdiction": "Ontario", "category": "Workplace Injury Reporting", "name": "WSIB — Report a Workplace Injury/Illness", "url": "https://www.wsib.ca/en/report-workplace-injuryillness"},
+  {"jurisdiction": "Ontario", "category": "Human Rights Complaint", "name": "Human Rights Tribunal of Ontario — File an Application", "url": "https://tribunalsontario.ca/hrto/application-and-hearing-process/"},
+  {"jurisdiction": "Quebec", "category": "Workplace Injury Reporting", "name": "CNESST — Worker's Claim (Work Accident/Occupational Disease)", "url": "https://www.cnesst.gouv.qc.ca/en/procedures-and-forms/workers/work-accident-or-occupational-disease"},
+  {"jurisdiction": "British Columbia", "category": "Workplace Injury Reporting", "name": "WorkSafeBC — Report a Workplace Injury or Illness", "url": "https://www.worksafebc.com/en/claims/report-workplace-injury-illness"},
+  {"jurisdiction": "British Columbia", "category": "Human Rights Complaint", "name": "BC Human Rights Tribunal", "url": "https://www.bchrt.bc.ca/"},
+  {"jurisdiction": "Alberta", "category": "Workplace Injury Reporting", "name": "WCB Alberta — Report a Claim", "url": "https://www.wcb.ab.ca/claims/report-a-claim/"},
+  {"jurisdiction": "Manitoba", "category": "Workplace Injury Reporting", "name": "WCB Manitoba — Report an Injury (Employer)", "url": "https://www.wcb.mb.ca/employers/report-an-injury/"},
+  {"jurisdiction": "Saskatchewan", "category": "Workplace Injury Reporting", "name": "Saskatchewan WCB — How to Report a Work Injury", "url": "https://www.wcbsask.com/how-report-work-injury"},
+  {"jurisdiction": "Nova Scotia", "category": "Workplace Injury Reporting", "name": "WCB Nova Scotia — Report an Injury", "url": "https://www.wcb.ns.ca/report-an-injury"},
+  {"jurisdiction": "New Brunswick", "category": "Workplace Injury Reporting", "name": "WorkSafeNB — Report an Injury or Illness", "url": "https://www.worksafenb.ca/employers/health-safety/report-an-injury-or-illness/"},
+  {"jurisdiction": "Newfoundland and Labrador", "category": "Workplace Injury Reporting", "name": "WorkplaceNL — Report a Workplace Injury", "url": "https://workplacenl.ca/employers/report-a-workplace-injury/"},
+  {"jurisdiction": "Federal", "category": "Workplace Health and Safety", "name": "Canada.ca — Workplace Health and Safety Programs", "url": "https://www.canada.ca/en/employment-social-development/programs/workplace-health-safety.html"}
+]

@@ -5,7 +5,7 @@ import anthropic
 import pandas as pd
 import streamlit as st
 
-from backend import document_extract, knowledge, policy_extractor, query_log, reorg_planner, severance_rules
+from backend import document_extract, forms, knowledge, policy_extractor, query_log, reorg_planner, severance_rules
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -87,10 +87,18 @@ h1, h2, h3 { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--navy
     margin-bottom: 1rem;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     flex-wrap: wrap;
     gap: 0.5rem;
+    border-left: 5px solid var(--gold);
 }
+.hra-banner.stale-amber { border-left-color: #d99a2b; }
+.hra-banner.stale-red { border-left-color: #c0392b; }
 .hra-banner b { color: var(--gold); }
+.hra-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.hra-dot.green { background: #4caf50; }
+.hra-dot.amber { background: #d99a2b; }
+.hra-dot.red { background: #c0392b; }
 [data-testid="stChatMessage"] {
     border: 1px solid #e4dfd2;
     border-radius: 10px;
@@ -141,16 +149,41 @@ def freshness_banner() -> None:
         dt = datetime.fromisoformat(refreshed)
         age_hours = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
         age_label = "today" if age_hours < 24 else f"{int(age_hours // 24)}d ago"
-        label = f"Government source data refreshed <b>{dt.strftime('%Y-%m-%d %H:%M UTC')}</b> ({age_label})"
+        if age_hours < 30:
+            css_class, dot = "", "green"
+        elif age_hours < 72:
+            css_class, dot = "stale-amber", "amber"
+        else:
+            css_class, dot = "stale-red", "red"
+        label = (
+            f'<span class="hra-dot {dot}"></span>Government source data refreshed '
+            f'<b>{dt.strftime("%Y-%m-%d %H:%M UTC")}</b> ({age_label})'
+        )
+        if age_hours >= 72:
+            label += " — <b>may be stale</b>, consider running a manual refresh"
     else:
-        label = "<b>No cached source data yet</b> — run scripts/refresh_knowledge.py, answers will use live search"
+        css_class, dot = "stale-red", "red"
+        label = (
+            f'<span class="hra-dot {dot}"></span><b>No cached source data yet</b> — run '
+            "scripts/refresh_knowledge.py, answers will use live search"
+        )
     stats = query_log.summary()
     st.markdown(
-        f'<div class="hra-banner"><span>{label}</span>'
+        f'<div class="hra-banner {css_class}"><span>{label}</span>'
         f'<span>{stats["total_queries"]} queries logged · '
         f'{stats["cache_hit_rate"]*100:.0f}% answered from cache</span></div>',
         unsafe_allow_html=True,
     )
+
+    changes = knowledge.recent_changes()
+    if changes:
+        with st.expander(f"🔔 {len(changes)} government source page(s) changed recently"):
+            for c in changes:
+                when = datetime.fromisoformat(c["detected_at"]).strftime("%Y-%m-%d")
+                st.markdown(
+                    f"**{c['jurisdiction']} — {c['topic']}** · detected {when} "
+                    f"([source]({c['url']}), similarity {c['similarity']:.0%})"
+                )
 
 
 def render_sidebar() -> None:
@@ -175,10 +208,34 @@ def render_sidebar() -> None:
             for jur, count in stats["top_jurisdictions"]:
                 st.write(f"{jur}: {count}")
 
+        st.divider()
+        with st.expander("🔍 Audit trail"):
+            st.caption(
+                "Every answer this instance has produced, with the exact text, sources, and model "
+                "used — for compliance review if a number here is ever relied on."
+            )
+            entries = query_log.audit_trail(limit=20)
+            if entries:
+                labels = [f"{e['ts'][:19].replace('T', ' ')} · {e['question'][:50]}" for e in entries]
+                pick = st.selectbox("Entry", range(len(entries)), format_func=lambda i: labels[i])
+                entry = entries[pick]
+                st.caption(f"Model: {entry['model'] or 'n/a'} · Cost: ${entry['cost_usd']:.4f}")
+                if entry["answer_snapshot"]:
+                    st.text(entry["answer_snapshot"][:2000])
+                if entry["sources_snapshot"]:
+                    st.caption(f"Sources: {entry['sources_snapshot']}")
+            else:
+                st.caption("No activity logged yet.")
+
 
 def render_qa_tab() -> None:
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
+
+    with st.expander("📋 Browse common HR forms & links (injury reporting, ROE, human rights, etc.)"):
+        jur_pick = st.selectbox("Jurisdiction", ["All"] + forms.all_jurisdictions(), key="forms_browser_jur")
+        for f in forms.forms_for_jurisdiction(None if jur_pick == "All" else jur_pick):
+            st.markdown(f"- **{f['category']}**: [{f['name']}]({f['url']}) ({f['jurisdiction']})")
 
     for msg in st.session_state["messages"]:
         with st.chat_message(msg["role"]):
@@ -236,6 +293,13 @@ def render_qa_tab() -> None:
             answer_text += "\n\n**Sources:**\n" + "\n".join(
                 f"- [{title or url}]({url})" for title, url in sources
             )
+
+        relevant_forms = forms.relevant_forms(question, jurisdictions)
+        if relevant_forms:
+            answer_text += "\n\n**Relevant forms/links:**\n" + "\n".join(
+                f"- [{f['name']}]({f['url']}) ({f['jurisdiction']})" for f in relevant_forms
+            )
+
         placeholder.markdown(answer_text)
 
         cost = (
@@ -262,6 +326,9 @@ def render_qa_tab() -> None:
             output_tokens=usage.output_tokens,
             num_searches=num_searches,
             cost_usd=cost,
+            model=MODEL,
+            answer_snapshot=answer_text,
+            sources_snapshot="; ".join(url for _, url in sources),
         )
 
     st.session_state["messages"].append({"role": "assistant", "content": answer_text})
@@ -400,6 +467,9 @@ def render_calculator_tab() -> None:
             output_tokens=usage.output_tokens,
             num_searches=0,
             cost_usd=cost,
+            model=MODEL,
+            answer_snapshot=answer_text,
+            sources_snapshot="",
         )
 
 
@@ -506,6 +576,9 @@ def render_reorg_tab() -> None:
             output_tokens=0,
             num_searches=0,
             cost_usd=0.0,
+            model=MODEL if custom_policy else "",
+            answer_snapshot=summary_df.to_string(),
+            sources_snapshot="",
         )
 
     result_df = st.session_state.get("reorg_result_df")

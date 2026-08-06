@@ -1,4 +1,8 @@
-"""SQLite log of every question asked, for cost tracking and usage analytics.
+"""SQLite log of every question asked, for cost tracking, usage analytics, and audit purposes.
+
+Every answer (Q&A, calculator, or reorg run) is logged with a full snapshot of the answer text,
+sources cited, and model version used — so if a number from this tool is ever referenced in an
+actual employment decision, there's a durable record of exactly what was shown and why.
 
 Note: on Streamlit Community Cloud the filesystem is ephemeral and resets on
 redeploy (including the nightly data refresh commit), so this log persists
@@ -23,7 +27,10 @@ CREATE TABLE IF NOT EXISTS query_log (
     input_tokens INTEGER NOT NULL DEFAULT 0,
     output_tokens INTEGER NOT NULL DEFAULT 0,
     num_searches INTEGER NOT NULL DEFAULT 0,
-    cost_usd REAL NOT NULL DEFAULT 0
+    cost_usd REAL NOT NULL DEFAULT 0,
+    model TEXT,
+    answer_snapshot TEXT,
+    sources_snapshot TEXT
 );
 """
 
@@ -34,10 +41,19 @@ def _conn():
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute(SCHEMA)
+        _ensure_columns(conn)
         yield conn
         conn.commit()
     finally:
         conn.close()
+
+
+def _ensure_columns(conn) -> None:
+    """Add audit columns for databases created before they existed."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(query_log)")}
+    for col in ("model", "answer_snapshot", "sources_snapshot"):
+        if col not in existing:
+            conn.execute(f"ALTER TABLE query_log ADD COLUMN {col} TEXT")
 
 
 def log_query(
@@ -48,11 +64,15 @@ def log_query(
     output_tokens: int,
     num_searches: int,
     cost_usd: float,
+    model: str = "",
+    answer_snapshot: str = "",
+    sources_snapshot: str = "",
 ) -> None:
     with _conn() as conn:
         conn.execute(
             "INSERT INTO query_log (ts, question, jurisdictions, used_web_search, "
-            "input_tokens, output_tokens, num_searches, cost_usd) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "input_tokens, output_tokens, num_searches, cost_usd, model, answer_snapshot, "
+            "sources_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 datetime.now(timezone.utc).isoformat(),
                 question,
@@ -62,6 +82,9 @@ def log_query(
                 output_tokens,
                 num_searches,
                 cost_usd,
+                model,
+                answer_snapshot,
+                sources_snapshot,
             ),
         )
 
@@ -88,3 +111,14 @@ def summary() -> dict:
         "top_jurisdictions": top_jurisdictions,
         "recent": recent,
     }
+
+
+def audit_trail(limit: int = 50) -> list[dict]:
+    with _conn() as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT id, ts, question, jurisdictions, used_web_search, model, cost_usd, "
+            "answer_snapshot, sources_snapshot FROM query_log ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(r) for r in rows]
