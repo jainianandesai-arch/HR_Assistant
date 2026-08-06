@@ -6,3 +6,4 @@ __pycache__/
 .streamlit/secrets.toml
 data/query_log.sqlite3
 data/scenarios.sqlite3
+data/app.sqlite3

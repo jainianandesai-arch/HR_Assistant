@@ -61,6 +61,21 @@ regulated employers.
    ```
 4. The app has no separate API-key input field — it only reads from Secrets/env, by design.
 
+## Durable storage (optional but recommended for production)
+
+By default, the audit trail, query log, and saved reorg scenarios live in a local SQLite file
+(`data/app.sqlite3`) — fine for local dev, but Streamlit Community Cloud's filesystem is ephemeral
+and resets on every redeploy (including the nightly refresh commit), so that history doesn't
+persist long-term.
+
+To make it durable, create a free Postgres database (e.g. [Supabase](https://supabase.com) or
+[Neon](https://neon.tech)) and add its connection string to **Settings → Secrets**:
+```toml
+DATABASE_URL = "postgresql://user:password@host:5432/dbname"
+```
+`backend/db.py` automatically switches to Postgres when this is set — no code changes needed. Both
+`query_log.py` and `scenario_store.py` work identically against either backend.
+
 ## Nightly data refresh
 
 `.github/workflows/refresh.yml` runs daily (09:00 UTC) via GitHub Actions: it fetches the official
