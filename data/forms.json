@@ -12,5 +12,9 @@
   {"jurisdiction": "Nova Scotia", "category": "Workplace Injury Reporting", "name": "WCB Nova Scotia — Report an Injury", "url": "https://www.wcb.ns.ca/report-an-injury"},
   {"jurisdiction": "New Brunswick", "category": "Workplace Injury Reporting", "name": "WorkSafeNB — Report an Injury or Illness", "url": "https://www.worksafenb.ca/employers/health-safety/report-an-injury-or-illness/"},
   {"jurisdiction": "Newfoundland and Labrador", "category": "Workplace Injury Reporting", "name": "WorkplaceNL — Report a Workplace Injury", "url": "https://workplacenl.ca/employers/report-a-workplace-injury/"},
+  {"jurisdiction": "Prince Edward Island", "category": "Workplace Injury Reporting", "name": "WCB PEI — Reporting an Injury", "url": "https://www.wcb.pe.ca/employers/ReportingAnInjury"},
+  {"jurisdiction": "Yukon", "category": "Workplace Injury Reporting", "name": "Yukon Workers' Safety and Compensation Board", "url": "https://www.wcb.yk.ca/"},
+  {"jurisdiction": "Northwest Territories", "category": "Workplace Injury Reporting", "name": "WSCC (NWT/Nunavut) — Report an Injury", "url": "https://wscc.nt.ca/claim-services/claim-workers/report-injury"},
+  {"jurisdiction": "Nunavut", "category": "Workplace Injury Reporting", "name": "WSCC (NWT/Nunavut) — Report an Injury", "url": "https://wscc.nt.ca/claim-services/claim-workers/report-injury"},
   {"jurisdiction": "Federal", "category": "Workplace Health and Safety", "name": "Canada.ca — Workplace Health and Safety Programs", "url": "https://www.canada.ca/en/employment-social-development/programs/workplace-health-safety.html"}
 ]
