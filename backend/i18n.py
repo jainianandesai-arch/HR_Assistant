@@ -15,6 +15,7 @@ STRINGS = {
     "tab_qa": {"en": "💬 Ask a Question", "fr": "💬 Poser une question"},
     "tab_calculator": {"en": "🧮 Severance Calculator", "fr": "🧮 Calculateur d'indemnité de départ"},
     "tab_reorg": {"en": "🏗️ Reorg Scenario Planner", "fr": "🏗️ Planificateur de scénarios de réorganisation"},
+    "tab_forms": {"en": "📋 Forms & Guides", "fr": "📋 Formulaires et guides"},
     "chat_placeholder": {
         "en": "e.g. What is the minimum severance notice in Ontario vs. Quebec?",
         "fr": "ex. Quel est le préavis minimal en Ontario par rapport au Québec?",

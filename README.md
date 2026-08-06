@@ -26,8 +26,12 @@ regulated employers.
   material changes surface in a "government source page(s) changed recently" panel in-app.
 - **Cache freshness indicator** — a color-coded banner (green/amber/red) shows how old the cached
   government data is, so answers are never silently stale.
-- **Forms & links directory** — a browsable and contextually-surfaced set of official forms (WSIB/
-  WorkSafeBC/CNESST injury reporting, ROE, human rights complaints, etc.).
+- **Forms & Guides tab** — a dedicated tab for new HRBPs: pick a situation (workplace injury,
+  termination, leave of absence, human rights concern) and a jurisdiction, and get the steps in
+  order with the correct official form linked exactly where it's needed (plus reporting deadlines
+  where known, e.g. "WSIB requires the employer's report within 3 days"). Also includes a
+  browsable directory of all official forms (WSIB/WorkSafeBC/CNESST injury reporting, ROE, human
+  rights complaints, etc.), and relevant forms are surfaced inline in Q&A answers too.
 - **Audit trail** — every Q&A answer, calculation, and reorg run is logged with the full answer
   text, sources, model version, and cost, viewable from the sidebar — for compliance review if a
   number from this tool is ever relied on.

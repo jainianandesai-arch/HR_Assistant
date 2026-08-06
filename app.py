@@ -5,7 +5,7 @@ import anthropic
 import pandas as pd
 import streamlit as st
 
-from backend import document_extract, forms, i18n, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, severance_rules
+from backend import document_extract, forms, i18n, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, severance_rules, workflows
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -253,10 +253,10 @@ def render_qa_tab() -> None:
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
 
-    with st.expander("📋 Browse common HR forms & links (injury reporting, ROE, human rights, etc.)"):
-        jur_pick = st.selectbox("Jurisdiction", ["All"] + forms.all_jurisdictions(), key="forms_browser_jur")
-        for f in forms.forms_for_jurisdiction(None if jur_pick == "All" else jur_pick):
-            st.markdown(f"- **{f['category']}**: [{f['name']}]({f['url']}) ({f['jurisdiction']})")
+    st.caption(
+        "Looking for a specific form (injury reporting, ROE, human rights complaint) or a "
+        "step-by-step walkthrough? See the **📋 Forms & Guides** tab."
+    )
 
     for msg in st.session_state["messages"]:
         with st.chat_message(msg["role"]):
@@ -685,6 +685,40 @@ def render_reorg_tab() -> None:
             )
 
 
+def render_forms_guides_tab() -> None:
+    st.subheader("Guided walkthrough")
+    st.caption(
+        "New to a situation? Pick what happened and the jurisdiction — get the steps in order, "
+        "with the right official form linked exactly where you need it."
+    )
+
+    all_workflows = workflows.load_workflows()
+    wf_labels = {wf["id"]: wf["label"] for wf in all_workflows}
+    wf_pick = st.selectbox("What's the situation?", list(wf_labels.keys()), format_func=lambda k: wf_labels[k])
+    jur_pick = st.selectbox("Jurisdiction", forms.all_jurisdictions() + ["Federal"], key="wf_jurisdiction")
+
+    workflow = workflows.get_workflow(wf_pick)
+    if workflow:
+        for i, step in enumerate(workflow["steps"], start=1):
+            st.markdown(f"**Step {i}: {step['title']}**")
+            st.write(step["detail"])
+            if step.get("use_form"):
+                form = workflows.resolve_form_for_step(workflow, jur_pick)
+                if form:
+                    st.info(f"📎 [{form['name']}]({form['url']}) — {form['jurisdiction']}")
+                else:
+                    st.caption(f"No specific form on file yet for {jur_pick} — check the Q&A tab.")
+                deadline = step.get("deadline_notes", {}).get(jur_pick)
+                if deadline:
+                    st.warning(f"⏱ {deadline}")
+            st.divider()
+
+    st.subheader("Browse all forms & links")
+    jur_filter = st.selectbox("Filter by jurisdiction", ["All"] + forms.all_jurisdictions(), key="forms_browser_jur")
+    for f in forms.forms_for_jurisdiction(None if jur_filter == "All" else jur_filter):
+        st.markdown(f"- **{f['category']}**: [{f['name']}]({f['url']}) ({f['jurisdiction']})")
+
+
 def main() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     render_sidebar()
@@ -695,8 +729,8 @@ def main() -> None:
 
     freshness_banner()
 
-    qa_tab, calc_tab, reorg_tab = st.tabs(
-        [i18n.t("tab_qa", lang), i18n.t("tab_calculator", lang), i18n.t("tab_reorg", lang)]
+    qa_tab, calc_tab, reorg_tab, forms_tab = st.tabs(
+        [i18n.t("tab_qa", lang), i18n.t("tab_calculator", lang), i18n.t("tab_reorg", lang), i18n.t("tab_forms", lang)]
     )
     with qa_tab:
         render_qa_tab()
@@ -704,6 +738,8 @@ def main() -> None:
         render_calculator_tab()
     with reorg_tab:
         render_reorg_tab()
+    with forms_tab:
+        render_forms_guides_tab()
 
 
 if __name__ == "__main__":

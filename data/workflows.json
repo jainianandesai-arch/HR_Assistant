@@ -1,0 +1,130 @@
+[
+  {
+    "id": "workplace_injury",
+    "label": "Workplace Injury or Illness",
+    "form_category": "Workplace Injury Reporting",
+    "steps": [
+      {
+        "title": "Ensure immediate safety and medical care",
+        "detail": "Get the employee first aid or emergency medical attention right away. This always comes before any paperwork."
+      },
+      {
+        "title": "Employee reports the injury to their supervisor",
+        "detail": "The employee (or a coworker on their behalf) should notify their manager/supervisor as soon as possible, even if the injury seems minor."
+      },
+      {
+        "title": "Employer files the official injury report",
+        "detail": "Submit the employer's incident/injury report to the workers' compensation board for this jurisdiction within the required deadline (varies by province — commonly 3-5 business days; some provinces are stricter, e.g. Nova Scotia ~2 days). Use the form link below.",
+        "use_form": true,
+        "deadline_notes": {
+          "Ontario": "WSIB requires the employer's report within 3 days of learning of the injury.",
+          "British Columbia": "WorkSafeBC requires reporting within 3 days.",
+          "Manitoba": "WCB Manitoba requires reporting within 5 business days.",
+          "New Brunswick": "WorkSafeNB requires the Employer Report within 3 days.",
+          "Nova Scotia": "WCB Nova Scotia recommends reporting within 2 days.",
+          "Newfoundland and Labrador": "WorkplaceNL requires the employer's Form 7 within 3 days.",
+          "Quebec": "CNESST should be notified promptly; the worker has up to 6 months to file a claim."
+        }
+      },
+      {
+        "title": "Support the employee's own claim",
+        "detail": "The employee typically also needs to file their own worker's report/claim with the board. Point them to the same portal and help them understand the process."
+      },
+      {
+        "title": "Notify internal stakeholders",
+        "detail": "Loop in your Health & Safety committee/representative and, if the injury is serious, confirm whether a workplace investigation or Ministry notification is separately required."
+      },
+      {
+        "title": "Plan the return-to-work",
+        "detail": "Once the board/medical provider clears the employee, coordinate a return-to-work plan, including any modified duties or accommodation needs."
+      }
+    ]
+  },
+  {
+    "id": "termination",
+    "label": "Termination / Severance",
+    "form_category": "Record of Employment",
+    "steps": [
+      {
+        "title": "Confirm jurisdiction and calculate entitlements",
+        "detail": "Use the Severance Calculator tab to get the statutory minimum notice/severance for this employee's province/territory and years of service."
+      },
+      {
+        "title": "Check for mass/group termination triggers",
+        "detail": "If this is part of a larger workforce reduction, use the Reorg Scenario Planner tab — it flags when headcount crosses a jurisdiction's mass-termination threshold, which usually adds extended notice and a filing requirement with the labour ministry."
+      },
+      {
+        "title": "Check for company policy or contractual entitlements",
+        "detail": "Compare the statutory minimum against any employment contract or company severance policy — the employee is entitled to whichever is greater. The Severance Calculator can reconcile this for you if you paste/upload the policy."
+      },
+      {
+        "title": "Prepare the termination letter and final pay",
+        "detail": "Include the reason (if disclosed), effective date, and a breakdown of notice/pay in lieu, severance, accrued vacation pay, and any other amounts owed."
+      },
+      {
+        "title": "Issue the Record of Employment (ROE)",
+        "detail": "Federally required for every employee who has an interruption of earnings, regardless of province. Use ROE Web to submit it.",
+        "use_form": true
+      },
+      {
+        "title": "Retain records",
+        "detail": "Keep the calculation, termination letter, and ROE on file — this is also what the app's audit trail captures automatically if you used the calculator."
+      }
+    ]
+  },
+  {
+    "id": "leave_of_absence",
+    "label": "Leave of Absence Request",
+    "form_category": null,
+    "steps": [
+      {
+        "title": "Confirm the leave type and eligibility",
+        "detail": "Identify which statutory leave applies (sick, parental, family/caregiver, bereavement, domestic violence leave, etc.) and confirm the employee meets the jurisdiction's eligibility criteria (e.g. minimum service length)."
+      },
+      {
+        "title": "Document the request",
+        "detail": "Get the request in writing with the expected start date and duration. Some leave types require advance notice from the employee; others don't."
+      },
+      {
+        "title": "Coordinate wage-replacement benefits",
+        "detail": "Determine whether Employment Insurance (EI) special benefits or the company's short/long-term disability plan applies, and point the employee to the right application."
+      },
+      {
+        "title": "Confirm job protection obligations",
+        "detail": "Most statutory leaves come with job/position protection — confirm what role the employee returns to and any benefits continuation requirements during the leave."
+      },
+      {
+        "title": "Plan the return-to-work",
+        "detail": "Check in ahead of the expected return date and confirm any accommodation needs before the employee is back."
+      }
+    ]
+  },
+  {
+    "id": "human_rights",
+    "label": "Human Rights / Discrimination Concern",
+    "form_category": "Human Rights Complaint",
+    "steps": [
+      {
+        "title": "Document the concern",
+        "detail": "Record what was reported, when, by whom, and any immediate steps taken (e.g. separating the parties involved)."
+      },
+      {
+        "title": "Assess duty to accommodate",
+        "detail": "If the concern relates to disability, family status, religion, or another protected ground, determine whether accommodation is required up to the point of undue hardship."
+      },
+      {
+        "title": "Conduct or commission an investigation",
+        "detail": "Depending on severity, this may be internal (HR-led) or require an external investigator. Keep the process confidential and document findings."
+      },
+      {
+        "title": "Implement remedies",
+        "detail": "Based on findings, this could include policy changes, disciplinary action, training, or accommodation measures."
+      },
+      {
+        "title": "Know the external escalation path",
+        "detail": "If the employee isn't satisfied with the internal resolution, they may file with the applicable human rights tribunal/commission. Use the link below to know where that is for this jurisdiction.",
+        "use_form": true
+      }
+    ]
+  }
+]
