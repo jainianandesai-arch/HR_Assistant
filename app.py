@@ -35,6 +35,26 @@ WEB_SEARCH_TOOL = {
     "max_uses": 5,
 }
 
+# Pricing (USD) — check https://www.anthropic.com/pricing before relying on this for budgeting.
+PRICE_PER_MTOK_INPUT = 3.00
+PRICE_PER_MTOK_OUTPUT = 15.00
+PRICE_PER_1K_SEARCHES = 10.00
+
+# Rough conversation-length guardrail: Sonnet 4.5 supports a 200K-token context window.
+# Each turn resends the full visible history, so cost and latency creep up as a chat grows.
+CONTEXT_WARNING_TOKENS = 60_000
+
+
+def extract_sources(response) -> list[tuple[str, str]]:
+    """Pull unique (title, url) pairs out of web-search citations in the response."""
+    seen: dict[str, str] = {}
+    for block in response.content:
+        for citation in getattr(block, "citations", None) or []:
+            url = getattr(citation, "url", None)
+            if url and url not in seen:
+                seen[url] = getattr(citation, "title", None) or ""
+    return [(title, url) for url, title in seen.items()]
+
 
 def get_client() -> anthropic.Anthropic:
     api_key = (
@@ -116,7 +136,33 @@ def main() -> None:
         answer_text = "".join(
             block.text for block in response.content if getattr(block, "type", None) == "text"
         )
+
+        sources = extract_sources(response)
+        if sources:
+            answer_text += "\n\n**Sources:**\n" + "\n".join(
+                f"- [{title or url}]({url})" for title, url in sources
+            )
+
         placeholder.markdown(answer_text)
+
+        usage = response.usage
+        num_searches = getattr(getattr(usage, "server_tool_use", None), "web_search_requests", 0) or 0
+        cost = (
+            usage.input_tokens * PRICE_PER_MTOK_INPUT / 1_000_000
+            + usage.output_tokens * PRICE_PER_MTOK_OUTPUT / 1_000_000
+            + num_searches * PRICE_PER_1K_SEARCHES / 1_000
+        )
+        total_tokens = usage.input_tokens + usage.output_tokens
+        st.caption(
+            f"~${cost:.4f} this turn · {usage.input_tokens:,} input / {usage.output_tokens:,} output tokens "
+            f"· {num_searches} web search{'es' if num_searches != 1 else ''}"
+        )
+        if total_tokens > CONTEXT_WARNING_TOKENS:
+            st.warning(
+                "This conversation is getting long, which increases cost and latency on every new "
+                "message (the full history is resent each turn). Consider clicking **Clear conversation** "
+                "in the sidebar and starting a fresh thread for a new topic."
+            )
 
     st.session_state["messages"].append({"role": "assistant", "content": answer_text})
 
