@@ -1,2 +1,7 @@
 streamlit>=1.38
 anthropic>=0.40
+requests>=2.32
+beautifulsoup4>=4.12
+lxml>=5.3
+pypdf>=4.3
+python-docx>=1.1
