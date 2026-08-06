@@ -294,8 +294,8 @@ of the two (recommended payout), and any caveats.
 def render_calculator_tab() -> None:
     st.subheader("Legislative minimum")
     st.caption(
-        "Built-in calculator currently covers Ontario, British Columbia, Alberta, Quebec, and "
-        "federally regulated employers. For other provinces/territories, ask the Q&A tab."
+        "Built-in calculator covers all 10 provinces, 3 territories, and federally regulated "
+        "employers."
     )
 
     col1, col2 = st.columns(2)
@@ -511,6 +511,14 @@ def render_reorg_tab() -> None:
     result_df = st.session_state.get("reorg_result_df")
     summary_df = st.session_state.get("reorg_summary_df")
     if result_df is not None:
+        mass_flags = reorg_planner.check_mass_termination(result_df)
+        for flag in mass_flags:
+            st.warning(f"⚠️ Mass/group termination trigger — {flag}", icon="⚠️")
+
+        union_flag = reorg_planner.check_unionized(result_df)
+        if union_flag:
+            st.warning(f"⚠️ {union_flag}", icon="⚠️")
+
         st.markdown("#### Scenario totals (in-scope employees)")
         st.dataframe(summary_df, use_container_width=True)
 

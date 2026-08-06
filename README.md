@@ -62,9 +62,9 @@ the workflow logs / script output periodically and fix stale URLs there.
 
 ## Known limitations
 
-- The severance calculator and reorg planner's built-in statutory formulas cover Ontario, British
-  Columbia, Alberta, Quebec, and federally regulated employers only; other provinces/territories
-  should use the Q&A tab.
+- The severance calculator and reorg planner's built-in statutory formulas cover all 10 provinces,
+  3 territories, and federally regulated employers, but are simplified summaries — always verify
+  against current legislation for an actual termination.
 - The reorg planner's Low/Moderate/High scenarios are planning estimates using a simplified
   common-law rule of thumb, not a substitute for legal/actuarial review of an actual reorg.
 - The query log is a local SQLite file — on Streamlit Community Cloud the filesystem is ephemeral

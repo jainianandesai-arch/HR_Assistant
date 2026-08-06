@@ -16,7 +16,7 @@ import pandas as pd
 from . import severance_rules
 
 REQUIRED_COLUMNS = ["employee_id", "jurisdiction", "hire_date", "weekly_pay"]
-OPTIONAL_COLUMNS = ["name", "department", "included"]
+OPTIONAL_COLUMNS = ["name", "department", "included", "unionized"]
 
 COLUMN_ALIASES = {
     "employee_id": ["employee_id", "employee id", "id", "emp id", "emp_id"],
@@ -26,6 +26,7 @@ COLUMN_ALIASES = {
     "weekly_pay": ["weekly_pay", "weekly pay", "weekly salary", "weekly wage"],
     "department": ["department", "dept", "team"],
     "included": ["included", "in scope", "in_scope", "impacted"],
+    "unionized": ["unionized", "unionised", "union", "cba", "collective agreement"],
 }
 
 
@@ -44,6 +45,7 @@ def build_template_bytes() -> bytes:
                 "hire_date": "2019-06-01",
                 "weekly_pay": 1800,
                 "included": "Y",
+                "unionized": "N",
             },
             {
                 "employee_id": "E002",
@@ -53,6 +55,7 @@ def build_template_bytes() -> bytes:
                 "hire_date": "2015-03-15",
                 "weekly_pay": 1450,
                 "included": "Y",
+                "unionized": "N",
             },
         ]
     )
@@ -65,12 +68,13 @@ def build_template_bytes() -> bytes:
                 "Required": ["Yes"] * len(REQUIRED_COLUMNS) + ["No"] * len(OPTIONAL_COLUMNS),
                 "Notes": [
                     "Unique identifier",
-                    f"Must be one of: {', '.join(severance_rules.SUPPORTED_JURISDICTIONS)} (others use Q&A tab)",
+                    f"Must be one of: {', '.join(severance_rules.SUPPORTED_JURISDICTIONS)}",
                     "YYYY-MM-DD",
                     "Regular weekly pay in CAD",
                     "Any text label",
                     "Any text label",
                     "Y/N — rows marked N are excluded from cost totals",
+                    "Y/N — rows marked Y are flagged; statutory ESA/CBA calculator doesn't apply to unionized roles, defer to the collective agreement",
                 ],
             }
         )
@@ -106,6 +110,10 @@ def load_employees(uploaded_file) -> pd.DataFrame:
         df["included"] = df["included"].astype(str).str.strip().str.upper().isin(["Y", "YES", "TRUE", "1"])
     else:
         df["included"] = True
+    if "unionized" in df.columns:
+        df["unionized"] = df["unionized"].astype(str).str.strip().str.upper().isin(["Y", "YES", "TRUE", "1"])
+    else:
+        df["unionized"] = False
     unsupported = sorted(set(df["jurisdiction"]) - set(severance_rules.SUPPORTED_JURISDICTIONS))
     if unsupported:
         raise TemplateError(
@@ -154,6 +162,12 @@ def compute_scenarios(
         moderate_weeks = (low_weeks + high_weeks) / 2
 
         notes = [f"Statutory ({r['jurisdiction']}): " + " ".join(stat.notes)]
+        if r.get("unionized"):
+            notes.append(
+                "⚠ UNIONIZED: statutory ESA minimums shown here typically do NOT apply as-is — "
+                "termination/layoff entitlements are governed by the collective agreement. Treat "
+                "these figures as a reference floor only and confirm with labour relations/legal."
+            )
         notes.append(
             f"Low = statutory minimum ({stat_weeks:.2f} wks)."
         )
@@ -170,6 +184,7 @@ def compute_scenarios(
             "department": r.get("department", ""),
             "jurisdiction": r["jurisdiction"],
             "included": r["included"],
+            "unionized": r.get("unionized", False),
             "years_of_service": round(years, 2),
             "weekly_pay": r["weekly_pay"],
             "statutory_weeks": round(stat_weeks, 2),
@@ -195,6 +210,34 @@ def compute_scenarios(
         rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+def check_mass_termination(df: pd.DataFrame) -> list[str]:
+    """Return human-readable flags where in-scope headcount per jurisdiction crosses a mass/group
+    termination threshold, requiring extended notice and/or a filing with the labour ministry."""
+    flags = []
+    in_scope = df[df["included"]]
+    for jurisdiction, group in in_scope.groupby("jurisdiction"):
+        headcount = len(group)
+        rule = severance_rules.check_mass_termination(jurisdiction, headcount)
+        if rule:
+            flags.append(
+                f"**{jurisdiction}**: {headcount} in-scope employees meets/exceeds the "
+                f"{rule.threshold}-employee mass-termination threshold (within {rule.window}). {rule.note}"
+            )
+    return flags
+
+
+def check_unionized(df: pd.DataFrame) -> str | None:
+    in_scope = df[df["included"]]
+    count = int(in_scope["unionized"].sum()) if "unionized" in in_scope.columns else 0
+    if count:
+        return (
+            f"{count} in-scope employee(s) are flagged as unionized. Statutory ESA figures for them "
+            "are shown as a reference floor only — actual entitlements are governed by the applicable "
+            "collective agreement. Confirm with labour relations before using these numbers."
+        )
+    return None
 
 
 def summarize(result_df: pd.DataFrame) -> pd.DataFrame:
