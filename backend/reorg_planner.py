@@ -153,6 +153,17 @@ def compute_scenarios(
         high_weeks = max(stat_weeks, common_law_weeks)
         moderate_weeks = (low_weeks + high_weeks) / 2
 
+        notes = [f"Statutory ({r['jurisdiction']}): " + " ".join(stat.notes)]
+        notes.append(
+            f"Low = statutory minimum ({stat_weeks:.2f} wks)."
+        )
+        notes.append(
+            f"High = greater of statutory ({stat_weeks:.2f} wks) or common-law estimate "
+            f"({years:.2f} yrs x {common_law_months_per_year} mo/yr, capped at {common_law_cap_months} mo, "
+            f"= {common_law_weeks:.2f} wks) -> {high_weeks:.2f} wks."
+        )
+        notes.append(f"Moderate = midpoint of Low and High = ({low_weeks:.2f} + {high_weeks:.2f}) / 2 = {moderate_weeks:.2f} wks.")
+
         row = {
             "employee_id": r["employee_id"],
             "name": r.get("name", ""),
@@ -174,6 +185,13 @@ def compute_scenarios(
             custom_weeks = max(custom_policy.weeks_for(years), stat_weeks)
             row["custom_weeks"] = round(custom_weeks, 2)
             row["custom_cost"] = round(custom_weeks * r["weekly_pay"], 2)
+            notes.append(
+                f"Custom = greater of policy formula ({custom_policy.weeks_for(years):.2f} wks: "
+                f"{custom_policy.summary or 'flat/per-year formula from policy'}) or statutory "
+                f"({stat_weeks:.2f} wks) -> {custom_weeks:.2f} wks."
+            )
+
+        row["calculation_notes"] = " | ".join(notes)
         rows.append(row)
 
     return pd.DataFrame(rows)

@@ -519,7 +519,18 @@ def render_reorg_tab() -> None:
         st.bar_chart(totals)
 
         st.markdown("#### Employee-level detail")
-        st.dataframe(result_df, use_container_width=True)
+        display_cols = [c for c in result_df.columns if c != "calculation_notes"]
+        st.dataframe(result_df[display_cols], use_container_width=True)
+
+        st.markdown("#### Inspect calculation logic for one employee")
+        pick = st.selectbox(
+            "Employee",
+            result_df["employee_id"],
+            format_func=lambda eid: f"{eid} — {result_df.loc[result_df['employee_id'] == eid, 'name'].iloc[0]}",
+        )
+        notes = result_df.loc[result_df["employee_id"] == pick, "calculation_notes"].iloc[0]
+        for part in notes.split(" | "):
+            st.caption(f"• {part}")
 
         st.download_button(
             "Download results (.xlsx)",
