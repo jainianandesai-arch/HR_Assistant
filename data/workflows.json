@@ -126,5 +126,81 @@
         "use_form": true
       }
     ]
+  },
+  {
+    "id": "harassment_investigation",
+    "label": "Workplace Harassment Investigation",
+    "form_category": "Human Rights Complaint",
+    "steps": [
+      {
+        "title": "Take immediate safety steps",
+        "detail": "If there's an ongoing risk, separate the parties (e.g. temporary schedule/reporting-line change) and confirm the complainant feels safe continuing to work. Don't wait for the investigation to conclude to act on immediate safety."
+      },
+      {
+        "title": "Document the complaint in writing",
+        "detail": "Record what was reported, by whom, when, against whom, and any witnesses — even if the complaint was made verbally. Most provincial OHS legislation (e.g. Ontario's workplace harassment provisions) requires a documented process."
+      },
+      {
+        "title": "Confirm this triggers a formal investigation",
+        "detail": "Check your workplace harassment/violence policy and the applicable occupational health and safety legislation — most jurisdictions require an investigation appropriate to the circumstances, not just an informal chat."
+      },
+      {
+        "title": "Choose an investigator",
+        "detail": "Decide whether this can be handled internally (HR-led) or needs an external/independent investigator — generally required when the allegation involves senior leadership, is severe, or internal HR has a conflict of interest."
+      },
+      {
+        "title": "Conduct the investigation",
+        "detail": "Interview the complainant, the respondent, and any witnesses separately. Gather relevant documents/communications. Keep the process and findings confidential, shared only on a need-to-know basis."
+      },
+      {
+        "title": "Document findings and decide on corrective action",
+        "detail": "Write up findings (substantiated, unsubstantiated, or inconclusive) and determine next steps — which may include discipline, training, policy changes, or team restructuring."
+      },
+      {
+        "title": "Communicate the outcome",
+        "detail": "Advise the complainant that the investigation is complete and that appropriate action was taken, without necessarily disclosing confidential details about discipline given to the respondent."
+      },
+      {
+        "title": "Know the external escalation path",
+        "detail": "If unresolved internally, the complainant may file with the applicable human rights tribunal/commission or, for OHS-specific harassment, the provincial labour/OHS authority.",
+        "use_form": true
+      }
+    ]
+  },
+  {
+    "id": "accommodation_request",
+    "label": "Accommodation Request (Duty to Accommodate)",
+    "form_category": "Human Rights Complaint",
+    "steps": [
+      {
+        "title": "Receive and document the request",
+        "detail": "Record what the employee is asking for and the protected ground it relates to (disability, family status, religion, etc.). The request doesn't need to use formal language — take it seriously even if informally raised."
+      },
+      {
+        "title": "Request only the information you actually need",
+        "detail": "For disability-related requests, you can ask for medical documentation confirming restrictions/limitations and prognosis — but generally not a diagnosis. Keep any medical information confidential and separate from the regular personnel file."
+      },
+      {
+        "title": "Assess accommodation options individually",
+        "detail": "Duty to accommodate is individualized — consult with the employee on what would work, rather than applying a one-size-fits-all policy. Consider modified duties, schedule changes, equipment, or leave."
+      },
+      {
+        "title": "Determine if undue hardship applies",
+        "detail": "Employers must accommodate up to the point of undue hardship (significant cost, or a genuine health/safety risk) — this is a high bar and rarely met by cost alone. Document the analysis if you're declining a specific accommodation."
+      },
+      {
+        "title": "Implement and document the accommodation plan",
+        "detail": "Put the agreed accommodation in writing, including any review date, so both sides have a shared understanding."
+      },
+      {
+        "title": "Monitor and review periodically",
+        "detail": "Accommodation needs can change — check in periodically, especially for medical accommodations with an expected recovery timeline."
+      },
+      {
+        "title": "Know the escalation path if there's disagreement",
+        "detail": "If the employee disagrees with the accommodation offered (or believes the duty wasn't met), they may file with the applicable human rights tribunal/commission.",
+        "use_form": true
+      }
+    ]
   }
 ]
