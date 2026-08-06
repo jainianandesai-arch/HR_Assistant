@@ -6,7 +6,7 @@ import anthropic
 import pandas as pd
 import streamlit as st
 
-from backend import document_extract, forms, knowledge, policy_extractor, query_log, reorg_planner, scenario_store, severance_rules
+from backend import document_extract, forms, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, scenario_store, severance_rules
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -655,12 +655,24 @@ def render_reorg_tab() -> None:
         for part in notes.split(" | "):
             st.caption(f"• {part}")
 
-        st.download_button(
-            "Download results (.xlsx)",
-            data=reorg_planner.build_output_excel(result_df, summary_df),
-            file_name="reorg_scenario_results.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        dl1, dl2 = st.columns(2)
+        with dl1:
+            st.download_button(
+                "Download results (.xlsx)",
+                data=reorg_planner.build_output_excel(result_df, summary_df),
+                file_name="reorg_scenario_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        with dl2:
+            st.download_button(
+                "Download one-page summary (.pdf)",
+                data=pdf_export.build_reorg_pdf(
+                    as_of, summary_df["Total ($)"], mass_flags, union_flag,
+                    scenario_name=st.session_state.get("reorg_scenario_last_name", ""),
+                ),
+                file_name="reorg_scenario_summary.pdf",
+                mime="application/pdf",
+            )
 
 
 def main() -> None:

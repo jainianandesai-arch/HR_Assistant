@@ -243,9 +243,11 @@ def check_unionized(df: pd.DataFrame) -> str | None:
 def summarize(result_df: pd.DataFrame) -> pd.DataFrame:
     in_scope = result_df[result_df["included"]]
     cost_cols = [c for c in ["statutory_cost", "low_cost", "moderate_cost", "high_cost", "custom_cost"] if c in in_scope.columns]
-    totals = in_scope[cost_cols].sum().rename("Total ($)")
+    totals = in_scope[cost_cols].sum()
     counts = pd.Series({"Employees in scope": len(in_scope)})
-    return pd.concat([counts, totals]).to_frame()
+    combined = pd.concat([counts, totals])
+    combined.name = "Total ($)"
+    return combined.to_frame()
 
 
 def build_output_excel(result_df: pd.DataFrame, summary_df: pd.DataFrame) -> bytes:
