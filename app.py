@@ -1,4 +1,3 @@
-import io
 import os
 from datetime import date, datetime, timezone
 
@@ -6,7 +5,7 @@ import anthropic
 import pandas as pd
 import streamlit as st
 
-from backend import document_extract, forms, i18n, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, scenario_store, severance_rules
+from backend import document_extract, forms, i18n, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, severance_rules
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -509,48 +508,6 @@ def render_calculator_tab() -> None:
 
 
 def render_reorg_tab() -> None:
-    saved_names = scenario_store.list_scenarios()
-    if saved_names:
-        with st.expander("📂 Load a saved scenario"):
-            c1, c2 = st.columns([3, 1])
-            pick = c1.selectbox("Saved scenarios", saved_names, label_visibility="collapsed")
-            if c2.button("Load"):
-                loaded = scenario_store.load_scenario(pick)
-                if loaded:
-                    st.session_state["reorg_loaded_df"] = pd.read_json(io.StringIO(loaded["employees_json"]), orient="records")
-                    st.session_state["reorg_loaded_df"]["hire_date"] = pd.to_datetime(
-                        st.session_state["reorg_loaded_df"]["hire_date"]
-                    )
-                    st.session_state["reorg_as_of"] = datetime.fromisoformat(loaded["as_of_date"]).date()
-                    st.session_state["reorg_payroll"] = loaded["payroll_million"] or 0.0
-                    st.session_state["reorg_months_per_year"] = loaded["months_per_year"]
-                    st.session_state["reorg_cap_months"] = int(loaded["cap_months"])
-                    st.session_state["reorg_policy_text"] = loaded["policy_text"] or ""
-                    st.success(f"Loaded scenario '{pick}'.")
-                    st.rerun()
-
-    if len(saved_names) >= 2:
-        with st.expander("📊 Compare two saved scenarios"):
-            c1, c2 = st.columns(2)
-            name_a = c1.selectbox("Scenario A", saved_names, key="compare_a")
-            name_b = c2.selectbox("Scenario B", saved_names, index=min(1, len(saved_names) - 1), key="compare_b")
-            if st.button("Compare"):
-                summary_a = scenario_store.compute_summary(name_a)
-                summary_b = scenario_store.compute_summary(name_b)
-                if summary_a is None or summary_b is None:
-                    st.error("Couldn't load one of the selected scenarios.")
-                else:
-                    compare_df = pd.DataFrame({name_a: summary_a, name_b: summary_b}).fillna(0)
-                    compare_df["Delta"] = compare_df[name_b] - compare_df[name_a]
-                    st.dataframe(compare_df, use_container_width=True)
-                    chart_rows = compare_df.drop("Employees in scope", errors="ignore")
-                    st.bar_chart(chart_rows[[name_a, name_b]])
-                    st.caption(
-                        "Comparison uses each scenario's saved statutory/common-law assumptions. "
-                        "Custom company-policy figures aren't included here (would require "
-                        "re-running the one-time policy parse for both)."
-                    )
-
     st.subheader("1. Upload employee list")
     st.caption(
         "Upload an Excel file of the employees in scope for a reorg. Need the format? "
@@ -564,19 +521,15 @@ def render_reorg_tab() -> None:
     )
 
     uploaded = st.file_uploader("Employee list", type=["xlsx"], key="reorg_upload")
-    if uploaded is not None:
-        try:
-            employees_df = reorg_planner.load_employees(uploaded)
-        except reorg_planner.TemplateError as e:
-            st.error(str(e))
-            return
-        except Exception as e:
-            st.error(f"Couldn't read that file: {e}")
-            return
-    elif "reorg_loaded_df" in st.session_state:
-        employees_df = st.session_state["reorg_loaded_df"]
-        st.info("Using employee list from the loaded scenario. Upload a file above to replace it.")
-    else:
+    if uploaded is None:
+        return
+    try:
+        employees_df = reorg_planner.load_employees(uploaded)
+    except reorg_planner.TemplateError as e:
+        st.error(str(e))
+        return
+    except Exception as e:
+        st.error(f"Couldn't read that file: {e}")
         return
 
     st.success(f"Loaded {len(employees_df)} employees ({employees_df['included'].sum()} in scope).")
@@ -646,16 +599,10 @@ def render_reorg_tab() -> None:
 
     custom_policy = st.session_state.get("reorg_custom_policy")
 
-    with st.expander("💾 Save this scenario for later"):
-        c1, c2 = st.columns([3, 1])
-        scenario_name = c1.text_input("Scenario name", placeholder="e.g. Ops Team Q3 Reorg", label_visibility="collapsed")
-        if c2.button("Save") and scenario_name:
-            scenario_store.save_scenario(
-                scenario_name, as_of, payroll_million, months_per_year, cap_months,
-                employees_df, combined_policy,
-            )
-            st.success(f"Saved scenario '{scenario_name}'.")
-            st.rerun()
+    scenario_name = st.text_input(
+        "Scenario name (used as the title on the PDF export)",
+        placeholder="e.g. Ops Team Q3 Reorg", key="reorg_scenario_name",
+    )
 
     st.subheader("4. Results")
     if st.button("Run scenarios", type="primary"):
@@ -690,7 +637,8 @@ def render_reorg_tab() -> None:
         if union_flag:
             st.warning(f"⚠️ {union_flag}", icon="⚠️")
 
-        for flag in reorg_planner.check_other_flags(result_df):
+        other_flags = reorg_planner.check_other_flags(result_df)
+        for flag in other_flags:
             st.warning(f"⚠️ {flag}", icon="⚠️")
 
         st.markdown("#### Scenario totals (in-scope employees)")
@@ -724,10 +672,13 @@ def render_reorg_tab() -> None:
             )
         with dl2:
             st.download_button(
-                "Download one-page summary (.pdf)",
+                "Download full scenario (.pdf)",
                 data=pdf_export.build_reorg_pdf(
-                    as_of, summary_df["Total ($)"], mass_flags, union_flag,
-                    scenario_name=st.session_state.get("reorg_scenario_last_name", ""),
+                    as_of, summary_df["Total ($)"], result_df, mass_flags, union_flag,
+                    other_flags=other_flags,
+                    common_law_months_per_year=months_per_year,
+                    common_law_cap_months=cap_months,
+                    scenario_name=scenario_name,
                 ),
                 file_name="reorg_scenario_summary.pdf",
                 mime="application/pdf",

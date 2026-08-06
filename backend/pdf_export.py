@@ -1,6 +1,7 @@
-"""One-page PDF summary of a reorg cost scenario — a polished deliverable an HRBP can attach to
-a business case, alongside the full Excel detail."""
-from datetime import date, datetime, timezone
+"""PDF export of a reorg cost scenario — a self-contained deliverable an HRBP can hand to a VP or
+attach to a business case: assumptions, totals, flags for legal review, and full employee-level
+detail with the methodology behind every number."""
+from datetime import datetime, timezone
 
 from fpdf import FPDF
 
@@ -29,15 +30,29 @@ class ReorgPDF(FPDF):
             "relying on these figures for an actual reorg.",
             align="C",
         )
+        self.set_y(-10)
+        self.cell(0, 6, f"Page {self.page_no()}", align="C")
+
+
+def _section_title(pdf: ReorgPDF, text: str) -> None:
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(*NAVY)
+    pdf.cell(0, 8, text, ln=True)
+    pdf.set_text_color(0, 0, 0)
 
 
 def build_reorg_pdf(
     as_of_date,
     summary_series,
+    result_df,
     mass_flags: list[str],
     union_flag: str | None,
+    other_flags: list[str] | None = None,
+    common_law_months_per_year: float | None = None,
+    common_law_cap_months: float | None = None,
     scenario_name: str = "",
 ) -> bytes:
+    other_flags = other_flags or []
     pdf = ReorgPDF(format="A4", unit="mm")
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
@@ -56,11 +71,32 @@ def build_reorg_pdf(
     pdf.line(10, pdf.get_y(), pdf.w - 10, pdf.get_y())
     pdf.ln(6)
 
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(*NAVY)
-    pdf.cell(0, 8, "Scenario Totals", ln=True)
+    # --- Methodology ---
+    _section_title(pdf, "How These Numbers Are Calculated")
+    pdf.set_font("Helvetica", "", 9)
+    methodology = (
+        "Low = statutory minimum notice/severance under the applicable provincial or federal "
+        "employment standards legislation for each employee's jurisdiction and years of service.\n\n"
+    )
+    if common_law_months_per_year is not None and common_law_cap_months is not None:
+        methodology += (
+            f"High = the greater of the statutory minimum or a common-law rule-of-thumb estimate "
+            f"({common_law_months_per_year} month(s) of notice per year of service, capped at "
+            f"{common_law_cap_months} months).\n\n"
+        )
+    else:
+        methodology += "High = the greater of the statutory minimum or a common-law rule-of-thumb estimate.\n\n"
+    methodology += (
+        "Moderate = the midpoint between Low and High.\n\n"
+        "Custom (if shown) = the greater of the statutory minimum or the entitlement calculated "
+        "from the company policy text provided, parsed once and applied to every employee."
+    )
+    pdf.multi_cell(0, 5, methodology)
+    pdf.ln(4)
+
+    # --- Scenario totals ---
+    _section_title(pdf, "Scenario Totals (In-Scope Employees)")
     pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(0, 0, 0)
 
     label_map = {
         "Employees in scope": "Employees in scope",
@@ -82,26 +118,66 @@ def build_reorg_pdf(
 
     pdf.ln(8)
 
-    if mass_flags or union_flag:
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.set_text_color(*NAVY)
-        pdf.cell(0, 8, "Flags for Legal/Labour Relations Review", ln=True)
+    # --- Flags ---
+    all_flags = list(mass_flags)
+    if union_flag:
+        all_flags.append(union_flag)
+    all_flags.extend(other_flags)
+    if all_flags:
+        _section_title(pdf, "Flags for Legal/Labour Relations Review")
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(0, 0, 0)
-        for flag in mass_flags:
-            clean = flag.replace("**", "")
+        for flag in all_flags:
+            clean = flag.replace("**", "").replace("⚠", "").strip()
             pdf.multi_cell(0, 6, f"- {clean}")
-        if union_flag:
-            pdf.multi_cell(0, 6, f"- {union_flag}")
         pdf.ln(4)
 
-    pdf.set_font("Helvetica", "I", 9)
-    pdf.set_text_color(*GREY)
-    pdf.multi_cell(
-        0, 6,
-        "Low = statutory minimum. High = greater of statutory minimum or a common-law rule-of-thumb "
-        "estimate. Moderate = midpoint of the two. See the accompanying Excel export for full "
-        "employee-level calculation detail and audit notes.",
-    )
+    # --- Employee-level detail ---
+    if result_df is not None and len(result_df):
+        in_scope = result_df[result_df["included"]] if "included" in result_df.columns else result_df
+        pdf.add_page()
+        _section_title(pdf, "Employee-Level Detail")
+        pdf.set_font("Helvetica", "", 8)
+
+        cols = [
+            ("employee_id", "ID", 18),
+            ("name", "Name", 30),
+            ("jurisdiction", "Jurisdiction", 32),
+            ("years_of_service", "Yrs", 12),
+            ("low_cost", "Low ($)", 24),
+            ("moderate_cost", "Moderate ($)", 26),
+            ("high_cost", "High ($)", 24),
+        ]
+        if "custom_cost" in in_scope.columns:
+            cols.append(("custom_cost", "Custom ($)", 24))
+
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(*NAVY)
+        pdf.set_text_color(255, 255, 255)
+        for key, label, width in cols:
+            pdf.cell(width, 7, label, border=1, fill=True, align="C")
+        pdf.ln()
+
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(0, 0, 0)
+        for _, row in in_scope.iterrows():
+            for key, _, width in cols:
+                val = row.get(key, "")
+                if key in ("low_cost", "moderate_cost", "high_cost", "custom_cost"):
+                    text = f"${val:,.0f}"
+                elif key == "years_of_service":
+                    text = f"{val:.1f}"
+                else:
+                    text = str(val)[: int(width / 1.7)]
+                pdf.cell(width, 6, text, border=1)
+            pdf.ln()
+
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "I", 8)
+        pdf.set_text_color(*GREY)
+        pdf.multi_cell(
+            0, 5,
+            "Per-employee calculation notes (which statutory rule applied, common-law formula, "
+            "any flags) are available in the Excel export's calculation_notes column.",
+        )
 
     return bytes(pdf.output())

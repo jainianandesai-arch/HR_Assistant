@@ -15,11 +15,13 @@ regulated employers.
   or a common-law rule-of-thumb, Moderate = midpoint), plus an optional custom-policy column. The
   company policy is parsed by the LLM **once** per run (not once per employee) and applied
   deterministically, so bulk runs stay cheap regardless of headcount.
-  - Flags mass/group termination thresholds per jurisdiction and unionized/CBA employees, so
-    those cases get routed to legal/labour relations instead of the statutory calculator.
+  - Flags mass/group termination thresholds per jurisdiction, unionized/CBA employees, fixed-term
+    contracts, and possible industry exclusions — so those cases get routed to legal/labour
+    relations instead of the statutory calculator giving a false-confidence number.
   - Every calculation includes plain-language notes explaining exactly how each number was derived.
-  - Scenarios can be saved by name and reloaded later instead of re-uploading Excel each time.
-  - Results download as Excel (summary + employee-level detail) or a polished one-page PDF summary.
+  - Scenarios live for the browser session — build and iterate freely, no save step required.
+    When finalized, download the full scenario as a self-contained PDF (methodology, totals,
+    flags, and employee-level detail) or as Excel for further analysis.
 - **Change detection** — the nightly refresh diffs each government page against the prior version;
   material changes surface in a "government source page(s) changed recently" panel in-app.
 - **Cache freshness indicator** — a color-coded banner (green/amber/red) shows how old the cached
@@ -63,18 +65,19 @@ regulated employers.
 
 ## Durable storage (optional but recommended for production)
 
-By default, the audit trail, query log, and saved reorg scenarios live in a local SQLite file
-(`data/app.sqlite3`) — fine for local dev, but Streamlit Community Cloud's filesystem is ephemeral
-and resets on every redeploy (including the nightly refresh commit), so that history doesn't
-persist long-term.
+By default, the audit trail and query log live in a local SQLite file (`data/app.sqlite3`) — fine
+for local dev, but Streamlit Community Cloud's filesystem is ephemeral and resets on every
+redeploy (including the nightly refresh commit), so that history doesn't persist long-term.
 
 To make it durable, create a free Postgres database (e.g. [Supabase](https://supabase.com) or
 [Neon](https://neon.tech)) and add its connection string to **Settings → Secrets**:
 ```toml
 DATABASE_URL = "postgresql://user:password@host:5432/dbname"
 ```
-`backend/db.py` automatically switches to Postgres when this is set — no code changes needed. Both
-`query_log.py` and `scenario_store.py` work identically against either backend.
+`backend/db.py` automatically switches to Postgres when this is set — no code changes needed.
+
+Reorg scenarios themselves are intentionally session-only (not persisted) — build, customize, and
+download as PDF/Excel within a session rather than saving to a database.
 
 ## Nightly data refresh
 
@@ -120,10 +123,11 @@ Quebec/CNESST content in particular).
   against current legislation for an actual termination.
 - The reorg planner's Low/Moderate/High scenarios are planning estimates using a simplified
   common-law rule of thumb, not a substitute for legal/actuarial review of an actual reorg.
-- Without `DATABASE_URL` configured, the query log, audit trail, and saved scenarios live in a
-  local SQLite file — on Streamlit Community Cloud the filesystem is ephemeral and resets on
-  redeploy, so this data persists for the life of a running instance rather than forever. See
-  "Durable storage" above.
+- Without `DATABASE_URL` configured, the query log and audit trail live in a local SQLite file —
+  on Streamlit Community Cloud the filesystem is ephemeral and resets on redeploy, so this data
+  persists for the life of a running instance rather than forever. See "Durable storage" above.
+- Reorg scenarios are session-only by design — closing the tab or refreshing loses in-progress
+  work, so download the PDF/Excel before navigating away once a scenario is finalized.
 - No authentication/access control — anyone with the app URL can run calculations. Add SSO/auth
   before using this beyond an internal pilot.
 - UI translation is partial — see "Language" above.
