@@ -4,9 +4,12 @@ of re-uploading Excel and re-typing assumptions every session.
 Storage: Postgres if DATABASE_URL is configured (see backend/db.py), local SQLite otherwise —
 same durability caveat as query_log.py.
 """
+import io
 from datetime import datetime, timezone
 
-from . import db
+import pandas as pd
+
+from . import db, reorg_planner
 
 _initialized = False
 
@@ -85,3 +88,27 @@ def load_scenario(name: str) -> dict | None:
 def delete_scenario(name: str) -> None:
     _ensure_schema()
     db.execute("DELETE FROM scenarios WHERE name = :name", {"name": name})
+
+
+def compute_summary(name: str) -> pd.Series | None:
+    """Recompute a saved scenario's cost summary from its stored assumptions.
+
+    Note: this does NOT re-apply a custom company-policy formula (that would require re-running
+    the one-time LLM extraction) — comparison is on statutory/low/moderate/high figures only, so
+    it stays instant and free.
+    """
+    loaded = load_scenario(name)
+    if loaded is None:
+        return None
+    employees_df = pd.read_json(io.StringIO(loaded["employees_json"]), orient="records")
+    employees_df["hire_date"] = pd.to_datetime(employees_df["hire_date"])
+    result_df = reorg_planner.compute_scenarios(
+        employees_df,
+        datetime.fromisoformat(loaded["as_of_date"]).date(),
+        loaded["payroll_million"],
+        loaded["months_per_year"],
+        loaded["cap_months"],
+        custom_policy=None,
+    )
+    summary_df = reorg_planner.summarize(result_df)
+    return summary_df["Total ($)"]

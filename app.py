@@ -515,6 +515,28 @@ def render_reorg_tab() -> None:
                     st.success(f"Loaded scenario '{pick}'.")
                     st.rerun()
 
+    if len(saved_names) >= 2:
+        with st.expander("📊 Compare two saved scenarios"):
+            c1, c2 = st.columns(2)
+            name_a = c1.selectbox("Scenario A", saved_names, key="compare_a")
+            name_b = c2.selectbox("Scenario B", saved_names, index=min(1, len(saved_names) - 1), key="compare_b")
+            if st.button("Compare"):
+                summary_a = scenario_store.compute_summary(name_a)
+                summary_b = scenario_store.compute_summary(name_b)
+                if summary_a is None or summary_b is None:
+                    st.error("Couldn't load one of the selected scenarios.")
+                else:
+                    compare_df = pd.DataFrame({name_a: summary_a, name_b: summary_b}).fillna(0)
+                    compare_df["Delta"] = compare_df[name_b] - compare_df[name_a]
+                    st.dataframe(compare_df, use_container_width=True)
+                    chart_rows = compare_df.drop("Employees in scope", errors="ignore")
+                    st.bar_chart(chart_rows[[name_a, name_b]])
+                    st.caption(
+                        "Comparison uses each scenario's saved statutory/common-law assumptions. "
+                        "Custom company-policy figures aren't included here (would require "
+                        "re-running the one-time policy parse for both)."
+                    )
+
     st.subheader("1. Upload employee list")
     st.caption(
         "Upload an Excel file of the employees in scope for a reorg. Need the format? "
