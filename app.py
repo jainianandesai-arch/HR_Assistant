@@ -1,3 +1,4 @@
+import io
 import os
 from datetime import date, datetime, timezone
 
@@ -5,7 +6,7 @@ import anthropic
 import pandas as pd
 import streamlit as st
 
-from backend import document_extract, forms, knowledge, policy_extractor, query_log, reorg_planner, severance_rules
+from backend import document_extract, forms, knowledge, policy_extractor, query_log, reorg_planner, scenario_store, severance_rules
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -474,6 +475,26 @@ def render_calculator_tab() -> None:
 
 
 def render_reorg_tab() -> None:
+    saved_names = scenario_store.list_scenarios()
+    if saved_names:
+        with st.expander("📂 Load a saved scenario"):
+            c1, c2 = st.columns([3, 1])
+            pick = c1.selectbox("Saved scenarios", saved_names, label_visibility="collapsed")
+            if c2.button("Load"):
+                loaded = scenario_store.load_scenario(pick)
+                if loaded:
+                    st.session_state["reorg_loaded_df"] = pd.read_json(io.StringIO(loaded["employees_json"]), orient="records")
+                    st.session_state["reorg_loaded_df"]["hire_date"] = pd.to_datetime(
+                        st.session_state["reorg_loaded_df"]["hire_date"]
+                    )
+                    st.session_state["reorg_as_of"] = datetime.fromisoformat(loaded["as_of_date"]).date()
+                    st.session_state["reorg_payroll"] = loaded["payroll_million"] or 0.0
+                    st.session_state["reorg_months_per_year"] = loaded["months_per_year"]
+                    st.session_state["reorg_cap_months"] = int(loaded["cap_months"])
+                    st.session_state["reorg_policy_text"] = loaded["policy_text"] or ""
+                    st.success(f"Loaded scenario '{pick}'.")
+                    st.rerun()
+
     st.subheader("1. Upload employee list")
     st.caption(
         "Upload an Excel file of the employees in scope for a reorg. Need the format? "
@@ -487,16 +508,19 @@ def render_reorg_tab() -> None:
     )
 
     uploaded = st.file_uploader("Employee list", type=["xlsx"], key="reorg_upload")
-    if uploaded is None:
-        return
-
-    try:
-        employees_df = reorg_planner.load_employees(uploaded)
-    except reorg_planner.TemplateError as e:
-        st.error(str(e))
-        return
-    except Exception as e:
-        st.error(f"Couldn't read that file: {e}")
+    if uploaded is not None:
+        try:
+            employees_df = reorg_planner.load_employees(uploaded)
+        except reorg_planner.TemplateError as e:
+            st.error(str(e))
+            return
+        except Exception as e:
+            st.error(f"Couldn't read that file: {e}")
+            return
+    elif "reorg_loaded_df" in st.session_state:
+        employees_df = st.session_state["reorg_loaded_df"]
+        st.info("Using employee list from the loaded scenario. Upload a file above to replace it.")
+    else:
         return
 
     st.success(f"Loaded {len(employees_df)} employees ({employees_df['included'].sum()} in scope).")
@@ -504,19 +528,26 @@ def render_reorg_tab() -> None:
     st.subheader("2. Scenario assumptions")
     c1, c2, c3 = st.columns(3)
     with c1:
-        as_of = st.date_input("Effective / as-of date", value=date.today())
+        as_of = st.date_input("Effective / as-of date", key="reorg_as_of", value=st.session_state.get("reorg_as_of", date.today()))
     with c2:
         payroll_million = st.number_input(
-            "Ontario payroll ($ millions, if applicable)", min_value=0.0, value=2.5, step=0.5,
+            "Ontario payroll ($ millions, if applicable)", min_value=0.0, step=0.5,
+            key="reorg_payroll", value=st.session_state.get("reorg_payroll", 2.5),
             help="Only affects Ontario employees' statutory severance-pay eligibility (needs ≥ $2.5M).",
         )
     with c3:
         st.caption("High-scenario common-law rule of thumb (adjustable):")
     c4, c5 = st.columns(2)
     with c4:
-        months_per_year = st.slider("Months of notice per year of service", 0.5, 2.0, 1.0, 0.1)
+        months_per_year = st.slider(
+            "Months of notice per year of service", 0.5, 2.0, step=0.1,
+            key="reorg_months_per_year", value=st.session_state.get("reorg_months_per_year", 1.0),
+        )
     with c5:
-        cap_months = st.slider("Cap (months)", 6, 30, 24, 1)
+        cap_months = st.slider(
+            "Cap (months)", 6, 30, step=1,
+            key="reorg_cap_months", value=st.session_state.get("reorg_cap_months", 24),
+        )
 
     st.caption(
         "**Low** = statutory minimum only. **High** = greater of statutory minimum or the common-law "
@@ -558,6 +589,17 @@ def render_reorg_tab() -> None:
             st.caption(f"~${cost:.4f} for this one-time extraction call.")
 
     custom_policy = st.session_state.get("reorg_custom_policy")
+
+    with st.expander("💾 Save this scenario for later"):
+        c1, c2 = st.columns([3, 1])
+        scenario_name = c1.text_input("Scenario name", placeholder="e.g. Ops Team Q3 Reorg", label_visibility="collapsed")
+        if c2.button("Save") and scenario_name:
+            scenario_store.save_scenario(
+                scenario_name, as_of, payroll_million, months_per_year, cap_months,
+                employees_df, combined_policy,
+            )
+            st.success(f"Saved scenario '{scenario_name}'.")
+            st.rerun()
 
     st.subheader("4. Results")
     if st.button("Run scenarios", type="primary"):
