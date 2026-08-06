@@ -88,6 +88,21 @@ Some source URLs in `data/sources.json` may 404 or block bot traffic over time �
 skips failures gracefully and the app falls back to live web search for anything not cached. Check
 the workflow logs / script output periodically and fix stale URLs there.
 
+### Optional: Slack/Teams notification on page changes
+
+The refresh script diffs each page against its previous version and, when a material change is
+detected, can post a summary to a Slack or Microsoft Teams incoming webhook. This is separate from
+the app's own `ANTHROPIC_API_KEY`/`DATABASE_URL` secrets — it's a **GitHub Actions secret**, since
+the nightly job runs outside the Streamlit app:
+
+1. Create an incoming webhook in Slack ([guide](https://api.slack.com/messaging/webhooks)) or Teams.
+2. In this repo on GitHub: **Settings → Secrets and variables → Actions → New repository secret**,
+   name it `CHANGE_NOTIFY_WEBHOOK_URL`, and paste the webhook URL.
+3. No code changes needed — the workflow picks it up automatically on the next scheduled run.
+
+Without this secret set, change detection still works and still shows in the app's banner; you
+just won't get a push notification outside the app.
+
 ## Known limitations
 
 - The severance calculator and reorg planner's built-in statutory formulas cover all 10 provinces,

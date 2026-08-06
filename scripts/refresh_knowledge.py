@@ -6,6 +6,7 @@ updated data/knowledge_cache.json back to the repo every morning.
 """
 import difflib
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -105,6 +106,22 @@ def append_changelog(new_changes: list[dict]) -> None:
     CHANGELOG_PATH.write_text(json.dumps(combined, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def notify_webhook(changes: list[dict]) -> None:
+    webhook_url = os.environ.get("CHANGE_NOTIFY_WEBHOOK_URL")
+    if not webhook_url or not changes:
+        return
+    lines = [f"*{len(changes)} government source page(s) changed:*"]
+    for c in changes:
+        lines.append(f"- {c['jurisdiction']} — {c['topic']} (similarity {c['similarity']:.0%}): {c['url']}")
+    payload = {"text": "\n".join(lines)}  # Slack-compatible; Teams incoming webhooks also accept "text"
+    try:
+        resp = requests.post(webhook_url, json=payload, timeout=15)
+        resp.raise_for_status()
+        print(f"\nPosted change notification to webhook ({resp.status_code}).")
+    except requests.RequestException as exc:
+        print(f"\nFailed to post webhook notification: {exc}")
+
+
 def main() -> None:
     sources = json.loads(SOURCES_PATH.read_text(encoding="utf-8"))
     old_pages = load_previous_pages()
@@ -130,6 +147,7 @@ def main() -> None:
         print(f"\nDetected {len(changes)} page(s) with material content changes:")
         for c in changes:
             print(f"  - {c['jurisdiction']} — {c['topic']} (similarity {c['similarity']})")
+        notify_webhook(changes)
 
     if failures:
         print("\nFailed URLs (left in cache with empty text, check data/sources.json):")
