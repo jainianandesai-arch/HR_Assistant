@@ -103,6 +103,16 @@ the nightly job runs outside the Streamlit app:
 Without this secret set, change detection still works and still shows in the app's banner; you
 just won't get a push notification outside the app.
 
+## Language
+
+A language toggle (sidebar) switches the app's main chrome (titles, tab labels, chat placeholder)
+between English and French, and instructs Claude to answer in the selected language (while still
+honoring whichever language the user actually types in). This is a **partial** translation — form
+field labels inside the calculator and reorg planner remain English-only, and the underlying
+government source cache is fetched from English-language pages, so French answers are Claude's
+translation of that content rather than sourced from native French government pages (relevant for
+Quebec/CNESST content in particular).
+
 ## Known limitations
 
 - The severance calculator and reorg planner's built-in statutory formulas cover all 10 provinces,
@@ -110,13 +120,13 @@ just won't get a push notification outside the app.
   against current legislation for an actual termination.
 - The reorg planner's Low/Moderate/High scenarios are planning estimates using a simplified
   common-law rule of thumb, not a substitute for legal/actuarial review of an actual reorg.
-- The query log, audit trail, and saved scenarios are local SQLite files — on Streamlit Community
-  Cloud the filesystem is ephemeral and resets on redeploy (including the nightly refresh commit),
-  so this data persists for the life of a running instance rather than forever.
+- Without `DATABASE_URL` configured, the query log, audit trail, and saved scenarios live in a
+  local SQLite file — on Streamlit Community Cloud the filesystem is ephemeral and resets on
+  redeploy, so this data persists for the life of a running instance rather than forever. See
+  "Durable storage" above.
 - No authentication/access control — anyone with the app URL can run calculations. Add SSO/auth
   before using this beyond an internal pilot.
-- The forms/links directory currently covers the most commonly needed jurisdictions (ON, QC, BC,
-  AB, MB, SK, NS, NB, NL, Federal); PE/YT/NT/NU can be added to `data/forms.json`.
+- UI translation is partial — see "Language" above.
 
 ## Disclaimer
 

@@ -6,7 +6,7 @@ import anthropic
 import pandas as pd
 import streamlit as st
 
-from backend import document_extract, forms, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, scenario_store, severance_rules
+from backend import document_extract, forms, i18n, knowledge, pdf_export, policy_extractor, query_log, reorg_planner, scenario_store, severance_rules
 
 st.set_page_config(
     page_title="Canada HR Employment Standards Assistant",
@@ -197,6 +197,19 @@ def freshness_banner() -> None:
 
 def render_sidebar() -> None:
     with st.sidebar:
+        st.session_state["lang"] = st.radio(
+            "Language / Langue", ["en", "fr"],
+            format_func=lambda x: "English" if x == "en" else "Français",
+            index=0 if st.session_state.get("lang", "en") == "en" else 1,
+            horizontal=True,
+        )
+        st.caption(
+            "Only the main chrome and Claude's answer language are translated — form field labels "
+            "inside the calculator/reorg planner remain English." if st.session_state["lang"] == "en" else
+            "Seuls les éléments principaux et la langue des réponses sont traduits — les étiquettes "
+            "des formulaires du calculateur/planificateur restent en anglais."
+        )
+        st.divider()
         st.header("About")
         st.caption(
             "Covers employment standards, workplace injury/disability, and severance/termination "
@@ -250,7 +263,8 @@ def render_qa_tab() -> None:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    question = st.chat_input("e.g. What is the minimum severance notice in Ontario vs. Quebec?")
+    lang = st.session_state.get("lang", "en")
+    question = st.chat_input(i18n.t("chat_placeholder", lang))
     if not question:
         return
 
@@ -263,7 +277,7 @@ def render_qa_tab() -> None:
     jurisdictions = knowledge.detect_jurisdictions(question)
     pages = knowledge.retrieve(question)
     context_text = knowledge.format_context(pages)
-    system_prompt = BASE_SYSTEM_PROMPT
+    system_prompt = BASE_SYSTEM_PROMPT + "\n\n" + i18n.LANGUAGE_INSTRUCTION[lang]
     if context_text:
         system_prompt += f"\n\nOFFICIAL SOURCE CONTEXT (refreshed {knowledge.refreshed_at()}):\n\n{context_text}"
 
@@ -461,7 +475,7 @@ def render_calculator_tab() -> None:
                 response = client.messages.create(
                     model=MODEL,
                     max_tokens=1200,
-                    system=SEVERANCE_SYSTEM_PROMPT,
+                    system=SEVERANCE_SYSTEM_PROMPT + "\n\n" + i18n.LANGUAGE_INSTRUCTION[st.session_state.get("lang", "en")],
                     messages=[{"role": "user", "content": user_prompt}],
                 )
             except anthropic.APIError as e:
@@ -722,17 +736,16 @@ def render_reorg_tab() -> None:
 
 def main() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-    st.title("🍁 Canada HR Employment Standards Assistant")
-    st.caption(
-        "Ask about employment standards, workplace injury/disability, or severance across any "
-        "Canadian province or territory. Grounded in official government sources, refreshed nightly."
-    )
-
     render_sidebar()
+    lang = st.session_state.get("lang", "en")
+
+    st.title(i18n.t("app_title", lang))
+    st.caption(i18n.t("app_caption", lang))
+
     freshness_banner()
 
     qa_tab, calc_tab, reorg_tab = st.tabs(
-        ["💬 Ask a Question", "🧮 Severance Calculator", "🏗️ Reorg Scenario Planner"]
+        [i18n.t("tab_qa", lang), i18n.t("tab_calculator", lang), i18n.t("tab_reorg", lang)]
     )
     with qa_tab:
         render_qa_tab()
