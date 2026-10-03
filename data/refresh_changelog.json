@@ -1,5 +1,12 @@
 [
   {
+    "detected_at": "2026-10-03T14:13:42.999844+00:00",
+    "jurisdiction": "Prince Edward Island",
+    "topic": "Employment Standards",
+    "url": "https://www.princeedwardisland.ca/en/topic/employment-standards",
+    "similarity": 0.764
+  },
+  {
     "detected_at": "2026-10-02T15:34:19.546807+00:00",
     "jurisdiction": "Nova Scotia",
     "topic": "Minimum Wage",
