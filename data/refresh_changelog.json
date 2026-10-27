@@ -1,5 +1,12 @@
 [
   {
+    "detected_at": "2026-10-27T15:14:47.164333+00:00",
+    "jurisdiction": "Prince Edward Island",
+    "topic": "Employment Standards",
+    "url": "https://www.princeedwardisland.ca/en/topic/employment-standards",
+    "similarity": 0.774
+  },
+  {
     "detected_at": "2026-10-26T16:00:48.125095+00:00",
     "jurisdiction": "Prince Edward Island",
     "topic": "Employment Standards",
