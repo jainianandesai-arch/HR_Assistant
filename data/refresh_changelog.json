@@ -1,5 +1,19 @@
 [
   {
+    "detected_at": "2026-11-18T17:55:21.314212+00:00",
+    "jurisdiction": "Alberta",
+    "topic": "Workers' Compensation Board",
+    "url": "https://www.wcb.ab.ca/claims/",
+    "similarity": 0.947
+  },
+  {
+    "detected_at": "2026-11-18T17:55:21.314212+00:00",
+    "jurisdiction": "Prince Edward Island",
+    "topic": "Employment Standards",
+    "url": "https://www.princeedwardisland.ca/en/topic/employment-standards",
+    "similarity": 0.802
+  },
+  {
     "detected_at": "2026-11-17T18:19:25.631878+00:00",
     "jurisdiction": "Prince Edward Island",
     "topic": "Employment Standards",
