@@ -1,5 +1,12 @@
 [
   {
+    "detected_at": "2026-11-19T18:04:46.436734+00:00",
+    "jurisdiction": "Prince Edward Island",
+    "topic": "Employment Standards",
+    "url": "https://www.princeedwardisland.ca/en/topic/employment-standards",
+    "similarity": 0.792
+  },
+  {
     "detected_at": "2026-11-18T17:55:21.314212+00:00",
     "jurisdiction": "Alberta",
     "topic": "Workers' Compensation Board",
